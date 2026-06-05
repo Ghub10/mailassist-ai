@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useInbox } from '../context/InboxContext';
 import { fetchGmailEmails } from '../services/gmailService';
 import { fetchOutlookEmails } from '../services/outlookService';
-import { classifyUrgency } from '../services/openaiService';
+// classifyUrgency disabled to reduce API calls on free-tier accounts
 import { getValidGoogleToken } from '../services/authService';
 import { refreshMicrosoftToken } from '../services/msalService';
 import { isTokenExpired } from '../utils/tokenStorage';

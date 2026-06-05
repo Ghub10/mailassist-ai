@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useInbox } from '../context/InboxContext';
-import { generateDraft, scoreDraft } from '../services/openaiService';
+import { generateDraft } from '../services/openaiService';
 import { loadDisplayName, loadReplyHistory, type ReplyHistoryEntry } from '../utils/tokenStorage';
 import type { Tone } from '../types/user';
 

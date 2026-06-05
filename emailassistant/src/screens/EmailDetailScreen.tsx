@@ -202,7 +202,7 @@ export function EmailDetailScreen() {
 
   function handleUsePreviousReply() {
     if (!similarReply) return;
-    setDraft({ emailId: email!.id, content: similarReply.replyText, isLoading: false, error: null });
+    setDraft({ emailId: email!.id, content: similarReply.replyText, isLoading: false, error: null, confidence: null });
     setShowReplyEditor(true);
   }
 
