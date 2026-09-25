@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 export const config = { runtime: 'edge' };
 
 // Exchanges/refreshes Google OAuth tokens so the client secret stays

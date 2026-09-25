@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 export const config = { runtime: 'edge' };
 
 // Proxies chat-completion requests to OpenAI so the API key stays server-side
