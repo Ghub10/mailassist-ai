@@ -2,7 +2,6 @@ import type { User } from '../types/user';
 import { isTokenExpired } from '../utils/tokenStorage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
-const GOOGLE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET as string;
 const APP_URL = import.meta.env.VITE_APP_URL as string;
 const GOOGLE_REDIRECT_URI = `${APP_URL}/auth/google/callback`;
 
@@ -52,13 +51,12 @@ export async function handleGoogleCallback(code: string): Promise<User> {
   const verifier = sessionStorage.getItem('pkce_verifier');
   if (!verifier) throw new Error('Missing PKCE verifier. Please try signing in again.');
 
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetch('/api/auth/google-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
       client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
       redirect_uri: GOOGLE_REDIRECT_URI,
       grant_type: 'authorization_code',
       code_verifier: verifier,
@@ -91,13 +89,12 @@ export async function handleGoogleCallback(code: string): Promise<User> {
 }
 
 export async function refreshGoogleToken(refreshToken: string): Promise<{ accessToken: string; tokenExpiry: number }> {
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetch('/api/auth/google-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       refresh_token: refreshToken,
       client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
       grant_type: 'refresh_token',
     }),
   });

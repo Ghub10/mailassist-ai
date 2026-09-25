@@ -3,7 +3,6 @@ import type { Email } from '../types/email';
 import { buildReplyPrompt } from '../utils/prompts';
 import { truncateForAI } from '../utils/emailParser';
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
 const RETRY_DELAY_MS = 15_000;
 
 // On a genuine 429 rate-limit response, waits 15 s then tries once more.
@@ -33,17 +32,12 @@ export async function generateDraft(
   signerName: string,
   onChunk?: (accumulated: string) => void
 ): Promise<string> {
-  if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key') {
-    throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
-  }
-
   const truncatedBody = truncateForAI(emailBody, 3000);
   const prompt = buildReplyPrompt(truncatedBody, tone, signerName);
 
   const init: RequestInit = {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -59,11 +53,7 @@ export async function generateDraft(
     ? () => onChunk('Rate limited — retrying in 15 s…')
     : undefined;
 
-  const response = await fetchWithRetry(
-    'https://api.openai.com/v1/chat/completions',
-    init,
-    onRetry
-  );
+  const response = await fetchWithRetry('/api/openai', init, onRetry);
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -128,7 +118,6 @@ export async function generateDraft(
 export async function classifyUrgency(
   emails: Email[]
 ): Promise<Record<string, 1 | 2 | 3>> {
-  if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key') return {};
   if (emails.length === 0) return {};
 
   const items = emails.map((e) => ({
@@ -149,10 +138,9 @@ Emails:
 ${JSON.stringify(items)}`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('/api/openai', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -187,10 +175,6 @@ export async function scoreDraft(
   emailBody: string,
   draftText: string
 ): Promise<{ score: number; feedback: string }> {
-  if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key') {
-    throw new Error('API key not configured');
-  }
-
   const prompt = `You are evaluating an AI-generated email reply. Rate 1–10 how completely and accurately this draft addresses the sender's question or request. A 10 means the reply is complete, accurate, and on-topic. A 1 means it misses the point entirely.
 
 Return ONLY a JSON object:
@@ -207,11 +191,10 @@ ${draftText.slice(0, 1000)}
 ---`;
 
   const response = await fetchWithRetry(
-    'https://api.openai.com/v1/chat/completions',
+    '/api/openai',
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
