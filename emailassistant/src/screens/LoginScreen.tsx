@@ -180,12 +180,12 @@ export function LoginScreen() {
           onClick={handleSampleMode}
           className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
         >
-          Try the sample inbox
-          <span className="mt-0.5 block text-xs font-normal text-violet-500">No sign-in needed</span>
+          Try a demo, no sign-in
+          <span className="mt-0.5 block text-xs font-normal text-violet-500">Watch the AI write a reply</span>
         </button>
 
         <p className="text-center text-xs text-zinc-400 pt-1">
-          By signing in you grant read and send access to your inbox.{' '}
+          Connecting your own inbox lets MailAssist suggest replies. It only sends or deletes an email when you approve it.{' '}
           <a href="#" className="underline hover:text-zinc-600 transition-colors">Privacy Policy</a>
         </p>
       </motion.div>

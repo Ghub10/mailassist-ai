@@ -43,7 +43,7 @@ export function SettingsScreen() {
     <div className="min-h-screen bg-zinc-50">
       {/* Top nav */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-zinc-200/70 shadow-sm">
-        <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate('/inbox')}
             className="p-2 -ml-2 rounded-lg text-zinc-500 hover:bg-zinc-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -55,7 +55,7 @@ export function SettingsScreen() {
         </div>
       </header>
 
-      <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6 pb-12">
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-12">
 
         {/* Connected account section */}
         <section>
