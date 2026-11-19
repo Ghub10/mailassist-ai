@@ -10,4 +10,6 @@ export interface User {
   refreshToken?: string;
   tokenExpiry: number; // Unix timestamp in ms
   tone: Tone;
+  /** True for the no-sign-in sample inbox. Demo users never touch Gmail, Outlook, OpenAI or Supabase. */
+  isDemo?: boolean;
 }

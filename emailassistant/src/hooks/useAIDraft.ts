@@ -4,6 +4,7 @@ import { useInbox } from '../context/InboxContext';
 import { generateDraft } from '../services/openaiService';
 import { loadDisplayName, loadReplyHistory, type ReplyHistoryEntry } from '../utils/tokenStorage';
 import type { Tone } from '../types/user';
+import { getSampleReply, streamSampleReply } from '../data/sampleMode';
 
 function normalizeSubject(subject: string): Set<string> {
   return new Set(
@@ -43,9 +44,14 @@ export function useAIDraft(emailId: string) {
   }, []);
 
   async function runWithScoring(emailBody: string, tone: Tone, signerName: string) {
-    const content = await generateDraft(emailBody, tone, signerName, (accumulated) => {
-      setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
-    });
+    // Sample mode: a pre-written reply typed out like the real AI, with no API call.
+    const content = user?.isDemo
+      ? await streamSampleReply(getSampleReply(emailId, tone, signerName), (accumulated) => {
+          setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
+        })
+      : await generateDraft(emailBody, tone, signerName, (accumulated) => {
+          setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
+        });
     // Draft scoring temporarily disabled to preserve API quota on free-tier
     // OpenAI accounts (scoring adds a second API call per generate).
     // Re-enable once billing is set up by restoring the scoreDraft call below.

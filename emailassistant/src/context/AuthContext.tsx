@@ -79,8 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback((user: User) => {
     dispatch({ type: 'LOGIN', payload: user });
     // Pull user data from Supabase into localStorage so tags/statuses/prefs
-    // are available immediately when the inbox loads.
-    syncFromSupabase(user.email);
+    // are available immediately when the inbox loads. Sample mode has no account.
+    if (!user.isDemo) syncFromSupabase(user.email);
   }, []);
 
   // Sign out: clears auth only — tags, statuses, and reply history are kept
@@ -97,8 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateTone = useCallback((tone: Tone) => {
     dispatch({ type: 'SET_TONE', payload: tone });
-    const userId = loadUser()?.email;
-    if (userId) pushToneToSupabase(userId, tone);
+    const saved = loadUser();
+    if (saved && !saved.isDemo) pushToneToSupabase(saved.email, tone);
   }, []);
 
   const updateToken = useCallback((accessToken: string, tokenExpiry: number) => {

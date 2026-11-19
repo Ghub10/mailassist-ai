@@ -67,7 +67,7 @@ export function SettingsScreen() {
               <div>
                 <p className="font-semibold text-zinc-900 text-sm">{user?.email}</p>
                 <p className={`text-xs mt-0.5 font-medium ${providerColor}`}>
-                  Connected via {providerLabel}
+                  {user?.isDemo ? 'Sample inbox (not a real account)' : `Connected via ${providerLabel}`}
                 </p>
               </div>
               <div className="text-2xl" aria-hidden="true">

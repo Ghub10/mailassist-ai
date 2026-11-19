@@ -7,6 +7,7 @@ import { fetchOutlookEmails } from '../services/outlookService';
 import { getValidGoogleToken } from '../services/authService';
 import { refreshMicrosoftToken } from '../services/msalService';
 import { isTokenExpired } from '../utils/tokenStorage';
+import { getSampleEmails } from '../data/sampleMode';
 
 export function useEmails() {
   const { user, updateToken } = useAuth();
@@ -21,6 +22,13 @@ export function useEmails() {
 
     setLoading(true);
     setError(null);
+
+    // Sample mode: show the built-in emails, never contact Gmail or Outlook.
+    if (user.isDemo) {
+      setEmails(getSampleEmails());
+      inFlightRef.current = false;
+      return;
+    }
 
     try {
       let token = user.accessToken;

@@ -54,6 +54,8 @@ function getCurrentUserId(): string | null {
   if (!raw) return null;
   try {
     const user = JSON.parse(raw) as User;
+    // Sample-mode visitors are never written to the database.
+    if (user.isDemo) return null;
     return user.email ?? null;
   } catch {
     return null;

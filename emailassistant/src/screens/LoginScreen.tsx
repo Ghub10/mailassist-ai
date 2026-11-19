@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { initiateGoogleLogin, handleGoogleCallback } from '../services/authService';
 import { initiateMicrosoftLogin, handleMicrosoftCallback } from '../services/msalService';
 import { Button } from '../components/Button';
+import { DEMO_USER } from '../data/sampleMode';
 
 export function LoginScreen() {
   const { login, user } = useAuth();
@@ -69,6 +70,15 @@ export function LoginScreen() {
       setError(err instanceof Error ? err.message : 'Could not start Google sign-in');
       setIsLoadingGoogle(false);
     }
+  }
+
+  function handleSampleMode() {
+    // Start every sample session fresh: clear tags/statuses left by an earlier demo.
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('tag_demo-') || key.startsWith('status_demo-'))
+      .forEach((key) => localStorage.removeItem(key));
+    login(DEMO_USER);
+    navigate('/inbox', { replace: true });
   }
 
   async function handleMicrosoftSignIn() {
@@ -158,6 +168,21 @@ export function LoginScreen() {
           </svg>
           Sign in with Microsoft
         </Button>
+
+        <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+          <div className="h-px flex-1 bg-zinc-200" />
+          <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">or</span>
+          <div className="h-px flex-1 bg-zinc-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSampleMode}
+          className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+        >
+          Try the sample inbox
+          <span className="mt-0.5 block text-xs font-normal text-violet-500">No sign-in needed</span>
+        </button>
 
         <p className="text-center text-xs text-zinc-400 pt-1">
           By signing in you grant read and send access to your inbox.{' '}

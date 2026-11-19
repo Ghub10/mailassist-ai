@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { InboxProvider } from './context/InboxContext';
@@ -56,6 +56,29 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Shown on every screen while the no-sign-in sample inbox is open
+function DemoBanner() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  if (!user?.isDemo) return null;
+
+  return (
+    <div className="bg-violet-600 px-4 py-2 text-center text-sm text-white" role="status">
+      You&apos;re viewing a <strong>sample inbox</strong>. The emails are made up and nothing is sent.{' '}
+      <button
+        type="button"
+        onClick={() => {
+          logout();
+          navigate('/', { replace: true });
+        }}
+        className="font-semibold underline underline-offset-2 hover:text-violet-100"
+      >
+        Exit and connect your own
+      </button>
+    </div>
+  );
+}
+
 function AppRoutes() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
@@ -63,6 +86,7 @@ function AppRoutes() {
   return (
     <>
       {!isOnline && <OfflineBanner />}
+      <DemoBanner />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           {/* Login and OAuth callback routes */}

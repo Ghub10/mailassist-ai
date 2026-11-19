@@ -122,34 +122,39 @@ export function EmailDetailScreen() {
 
     setIsSending(true);
     try {
-      let token = user.accessToken;
-
-      // Refresh token if needed before sending
-      if (isTokenExpired(user)) {
-        if (user.provider === 'google') {
-          token = await getValidGoogleToken(user);
-        } else {
-          const refreshed = await refreshMicrosoftToken(user);
-          token = refreshed.accessToken;
-          updateToken(refreshed.accessToken, refreshed.tokenExpiry);
-        }
-      }
-
-      if (user.provider === 'google') {
-        await sendGmailReply(token, email!.threadId, email!.fromEmail, email!.subject, draft!.content);
+      if (user.isDemo) {
+        // Sample mode: pretend to send. Nothing leaves the browser.
+        await new Promise((resolve) => setTimeout(resolve, 600));
       } else {
-        await sendOutlookReply(token, email!.id, draft!.content);
-      }
+        let token = user.accessToken;
 
-      saveReplyToHistory({
-        subject: email!.subject,
-        bodySnippet: email!.bodyText.slice(0, 200),
-        replyText: draft!.content,
-        sentAt: new Date().toISOString(),
-      });
+        // Refresh token if needed before sending
+        if (isTokenExpired(user)) {
+          if (user.provider === 'google') {
+            token = await getValidGoogleToken(user);
+          } else {
+            const refreshed = await refreshMicrosoftToken(user);
+            token = refreshed.accessToken;
+            updateToken(refreshed.accessToken, refreshed.tokenExpiry);
+          }
+        }
+
+        if (user.provider === 'google') {
+          await sendGmailReply(token, email!.threadId, email!.fromEmail, email!.subject, draft!.content);
+        } else {
+          await sendOutlookReply(token, email!.id, draft!.content);
+        }
+
+        saveReplyToHistory({
+          subject: email!.subject,
+          bodySnippet: email!.bodyText.slice(0, 200),
+          replyText: draft!.content,
+          sentAt: new Date().toISOString(),
+        });
+      }
       updateEmailStatus(email!.id, 'replied');
       clearDraft();
-      showToast('Reply sent!', 'success');
+      showToast(user.isDemo ? 'Sample mode: reply marked as sent (nothing was emailed)' : 'Reply sent!', 'success');
 
       // Navigate back to inbox after a short delay so user sees the toast
       setTimeout(() => navigate('/inbox'), 1500);
@@ -175,6 +180,13 @@ export function EmailDetailScreen() {
     if (!user) return;
     setIsDeleting(true);
     try {
+      if (user.isDemo) {
+        // Sample mode: remove from the on-screen list only.
+        removeEmail(email!.id);
+        showToast('Sample mode: removed from this demo inbox', 'success');
+        setTimeout(() => navigate('/inbox'), 100);
+        return;
+      }
       let token = user.accessToken;
       if (isTokenExpired(user)) {
         if (user.provider === 'google') {
