@@ -5,6 +5,14 @@ import { truncateForAI } from '../utils/emailParser';
 
 const RETRY_DELAY_MS = 15_000;
 
+// What people see when the AI can't answer. The technical reason (no credits,
+// bad key, rate limit...) goes to the browser console for debugging, never to
+// the screen.
+const MSG_BUSY = 'The assistant is busy, please try again in a minute.';
+const MSG_UNAVAILABLE = "The assistant isn't available right now. Please try again later.";
+const MSG_EMPTY = "The assistant didn't come back with a reply. Please try again.";
+const MSG_OFFLINE = "Couldn't reach the assistant. Please check your connection and try again.";
+
 // On a genuine 429 rate-limit response, waits 15 s then tries once more.
 // A 429 caused by insufficient_quota (no credits / no billing) is NOT retried,
 // since waiting can never resolve it. onRetry is called right before a retry so
@@ -50,38 +58,39 @@ export async function generateDraft(
   };
 
   const onRetry = onChunk
-    ? () => onChunk('Rate limited — retrying in 15 s…')
+    ? () => onChunk('The assistant is busy. Trying again in a moment…')
     : undefined;
 
-  const response = await fetchWithRetry('/api/openai', init, onRetry);
+  let response: Response;
+  try {
+    response = await fetchWithRetry('/api/openai', init, onRetry);
+  } catch (networkError) {
+    console.error('[assistant] request failed', networkError);
+    throw new Error(MSG_OFFLINE);
+  }
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    if (err.error?.code === 'insufficient_quota') {
-      throw new Error(
-        'Your OpenAI account has no credits. Add a payment method and credit at platform.openai.com to enable AI replies.'
-      );
+    console.error('[assistant] OpenAI request failed', response.status, err);
+    // No credits, or too many requests: both read as "busy" to a visitor.
+    if (err.error?.code === 'insufficient_quota' || response.status === 429) {
+      throw new Error(MSG_BUSY);
     }
-    if (response.status === 429) {
-      throw new Error('AI rate limit reached. Please wait a minute and try again.');
-    }
-    if (response.status === 401) {
-      throw new Error('Invalid OpenAI API key. Please check your configuration.');
-    }
-    throw new Error(err.error?.message || 'AI service unavailable. Please try again.');
+    // Bad or missing key, server problem, anything else.
+    throw new Error(MSG_UNAVAILABLE);
   }
 
   // Non-streaming path
   if (!onChunk) {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error('AI returned an empty response. Please try again.');
+    if (!content) throw new Error(MSG_EMPTY);
     return content;
   }
 
   // Streaming path — parse SSE chunks and accumulate
   const reader = response.body?.getReader();
-  if (!reader) throw new Error('Streaming not supported by this browser.');
+  if (!reader) throw new Error(MSG_UNAVAILABLE);
 
   const decoder = new TextDecoder();
   let accumulated = '';
@@ -111,7 +120,7 @@ export async function generateDraft(
     }
   }
 
-  if (!accumulated) throw new Error('AI returned an empty response. Please try again.');
+  if (!accumulated) throw new Error(MSG_EMPTY);
   return accumulated;
 }
 

@@ -117,9 +117,9 @@ export function ReplyEditor({
     return (
       <div className="space-y-4">
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
-          <span aria-hidden="true">❌</span>
+          <span aria-hidden="true">⚠️</span>
           <div>
-            <p className="font-semibold mb-1">AI unavailable</p>
+            <p className="font-semibold mb-1">We couldn&apos;t write a reply</p>
             <p>{draft.error}</p>
           </div>
         </div>

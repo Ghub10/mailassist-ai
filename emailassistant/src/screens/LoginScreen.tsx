@@ -7,6 +7,12 @@ import { initiateMicrosoftLogin, handleMicrosoftCallback } from '../services/msa
 import { Button } from '../components/Button';
 import { DEMO_USER } from '../data/sampleMode';
 
+const STEPS = [
+  { title: 'Connect', text: 'Sign in with Google or Microsoft, or try the demo with no sign-in.' },
+  { title: 'Pick an email', text: 'Open any message that needs an answer.' },
+  { title: 'Get a draft', text: 'The assistant writes a reply in the tone you choose. Edit it, then approve to send.' },
+];
+
 export function LoginScreen() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -123,6 +129,9 @@ export function LoginScreen() {
         <p className="text-sm font-medium text-zinc-400 max-w-[220px] mx-auto leading-relaxed tracking-wide">
           Smarter replies. Zero effort.
         </p>
+        <p className="mt-5 text-base text-zinc-600 max-w-md mx-auto leading-relaxed">
+          Reads your emails and drafts the replies for you. You review and approve every one before it&apos;s sent.
+        </p>
       </motion.div>
 
       {/* Sign-in card */}
@@ -188,6 +197,59 @@ export function LoginScreen() {
           Connecting your own inbox lets MailAssist suggest replies. It only sends or deletes an email when you approve it.
         </p>
       </motion.div>
+
+      {/* What it does, in three steps, with a look at the real screen */}
+      <motion.section
+        className="w-full max-w-3xl mt-16"
+        aria-labelledby="how-it-works"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.2 }}
+      >
+        <h2
+          id="how-it-works"
+          className="text-center text-xs font-semibold uppercase tracking-widest text-violet-600 mb-6"
+        >
+          How it works
+        </h2>
+
+        <ol className="grid gap-4 sm:grid-cols-3 sm:gap-7">
+          {STEPS.map((step, index) => (
+            <li
+              key={step.title}
+              className="relative rounded-2xl bg-white border border-zinc-100 p-5 shadow-sm"
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-sm font-bold text-violet-700">
+                {index + 1}
+              </span>
+              <h3 className="mt-3 font-semibold text-zinc-900">{step.title}</h3>
+              <p className="mt-1 text-sm text-zinc-500 leading-relaxed">{step.text}</p>
+              {index < STEPS.length - 1 && (
+                <span
+                  className="hidden sm:block absolute top-1/2 -right-[22px] -translate-y-1/2 text-xl text-zinc-300"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+
+        <figure className="mt-10">
+          <img
+            src="/screenshot-reply.png"
+            width={1552}
+            height={1314}
+            loading="lazy"
+            alt="The reply screen: an email from Priya Shah and a friendly AI-written reply, with Friendly, Formal and Concise tone buttons and an Approve & Send button"
+            className="w-full h-auto rounded-2xl border border-zinc-200 shadow-xl shadow-zinc-300/40"
+          />
+          <figcaption className="mt-3 text-center text-sm text-zinc-500">
+            The reply screen: choose a tone, watch the draft appear, edit it, then approve.
+          </figcaption>
+        </figure>
+      </motion.section>
     </div>
   );
 }

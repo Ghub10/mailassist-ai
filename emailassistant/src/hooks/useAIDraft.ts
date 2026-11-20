@@ -78,7 +78,7 @@ export function useAIDraft(emailId: string) {
     try {
       await runWithScoring(emailBody, toneOverride ?? user.tone, getSignerName());
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'AI service unavailable. Please try again.';
+      const message = err instanceof Error ? err.message : "The assistant isn't available right now. Please try again later.";
       setDraft({ emailId, content: '', isLoading: false, error: message, confidence: null });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,7 +92,7 @@ export function useAIDraft(emailId: string) {
     try {
       await runWithScoring(emailBody, toneOverride ?? user.tone, getSignerName());
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'AI service unavailable. Please try again.';
+      const message = err instanceof Error ? err.message : "The assistant isn't available right now. Please try again later.";
       setDraft({ emailId, content: '', isLoading: false, error: message, confidence: null });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
