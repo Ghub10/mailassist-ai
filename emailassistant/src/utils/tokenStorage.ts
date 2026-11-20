@@ -127,6 +127,7 @@ export function loadReplyHistory(): ReplyHistoryEntry[] {
 
 /** Pull all user data from Supabase and write it into localStorage. */
 export async function syncFromSupabase(userId: string): Promise<void> {
+  if (!supabase) return;
   try {
     const [tagsRes, statusesRes, prefsRes, historyRes] = await Promise.all([
       supabase.from('email_tags').select('email_id, tag').eq('user_id', userId),
@@ -173,6 +174,7 @@ export async function syncFromSupabase(userId: string): Promise<void> {
 
 /** Upsert a tag change to Supabase (fire-and-forget). */
 export function pushTagToSupabase(userId: string, emailId: string, tag: string | null): void {
+  if (!supabase) return;
   if (tag === null) {
     supabase.from('email_tags').delete().eq('user_id', userId).eq('email_id', emailId).then(() => {});
   } else {
@@ -182,21 +184,25 @@ export function pushTagToSupabase(userId: string, emailId: string, tag: string |
 
 /** Upsert a status change to Supabase (fire-and-forget). */
 export function pushStatusToSupabase(userId: string, emailId: string, status: string): void {
+  if (!supabase) return;
   supabase.from('email_statuses').upsert({ user_id: userId, email_id: emailId, status, updated_at: new Date().toISOString() }).then(() => {});
 }
 
 /** Upsert display name to Supabase (fire-and-forget). */
 export function pushDisplayNameToSupabase(userId: string, displayName: string): void {
+  if (!supabase) return;
   supabase.from('user_preferences').upsert({ user_id: userId, display_name: displayName, updated_at: new Date().toISOString() }).then(() => {});
 }
 
 /** Upsert tone preference to Supabase (fire-and-forget). */
 export function pushToneToSupabase(userId: string, tone: string): void {
+  if (!supabase) return;
   supabase.from('user_preferences').upsert({ user_id: userId, tone, updated_at: new Date().toISOString() }).then(() => {});
 }
 
 /** Insert a reply history entry to Supabase (fire-and-forget). */
 export function pushReplyToSupabase(userId: string, entry: ReplyHistoryEntry): void {
+  if (!supabase) return;
   supabase.from('reply_history').insert({
     user_id: userId,
     subject: entry.subject,
