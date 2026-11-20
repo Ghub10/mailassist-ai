@@ -185,8 +185,7 @@ export function LoginScreen() {
         </button>
 
         <p className="text-center text-xs text-zinc-400 pt-1">
-          Connecting your own inbox lets MailAssist suggest replies. It only sends or deletes an email when you approve it.{' '}
-          <a href="#" className="underline hover:text-zinc-600 transition-colors">Privacy Policy</a>
+          Connecting your own inbox lets MailAssist suggest replies. It only sends or deletes an email when you approve it.
         </p>
       </motion.div>
     </div>

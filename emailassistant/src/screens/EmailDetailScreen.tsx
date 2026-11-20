@@ -1,13 +1,14 @@
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronDownIcon, TrashIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useInbox } from '../context/InboxContext';
 import { useAuth } from '../context/AuthContext';
 import { useAIDraft } from '../hooks/useAIDraft';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useToast } from '../hooks/useToast';
 import { ReplyEditor, GenerateReplyButton } from '../components/ReplyEditor';
-import { Badge } from '../components/Badge';
+import { tagClasses } from '../utils/tagStyles';
+import { Avatar } from '../components/Avatar';
 import { ToastContainer } from '../components/Toast';
 import { sendGmailReply, trashGmailEmail } from '../services/gmailService';
 import { sendOutlookReply, trashOutlookEmail } from '../services/outlookService';
@@ -15,6 +16,7 @@ import { getValidGoogleToken } from '../services/authService';
 import { refreshMicrosoftToken } from '../services/msalService';
 import { isTokenExpired, saveReplyToHistory } from '../utils/tokenStorage';
 import type { EmailTag } from '../types/email';
+import type { Tone } from '../types/user';
 
 const TAG_OPTIONS: { value: Exclude<EmailTag, null>; label: string }[] = [
   { value: 'urgent', label: 'Urgent' },
@@ -84,6 +86,9 @@ export function EmailDetailScreen() {
   const [isSending, setIsSending] = useState(false);
   const [showReplyEditor, setShowReplyEditor] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // The tone for this reply. It starts from the tone saved in Settings, and
+  // switching it here doesn't change that saved choice.
+  const [replyTone, setReplyTone] = useState<Tone>(user?.tone ?? 'friendly');
 
   const email = emails.find((e) => e.id === id);
   const { draft, generate, regenerate, updateContent, clearDraft, findSimilarReply } = useAIDraft(id || '');
@@ -114,7 +119,12 @@ export function EmailDetailScreen() {
 
   async function handleGenerateReply() {
     setShowReplyEditor(true);
-    await generate(email!.bodyText);
+    await generate(email!.bodyText, replyTone);
+  }
+
+  async function handleToneChange(tone: Tone) {
+    setReplyTone(tone);
+    await regenerate(email!.bodyText, tone);
   }
 
   async function handleSend() {
@@ -238,44 +248,55 @@ export function EmailDetailScreen() {
 
       <main className="max-w-3xl mx-auto px-4 py-4 pb-24 space-y-4">
         {/* Email header */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-2">
-          <h3 className="font-semibold text-zinc-900 text-base leading-snug">{email.subject}</h3>
-          <p className="text-sm text-zinc-600">
-            <span className="font-medium">{email.from}</span>
-            {' · '}
-            <span className="text-zinc-400">{email.fromEmail}</span>
-          </p>
-          <p className="text-xs text-zinc-400">{formatDate(email.receivedAt)}</p>
+        <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
+          <h3 className="text-xl font-semibold tracking-tight text-zinc-900 leading-snug">{email.subject}</h3>
 
-          {/* Tag selector */}
-          <div className="flex items-center gap-2 pt-1">
-            <label htmlFor="tag-select" className="text-xs text-zinc-500 font-medium">Tag:</label>
-            <select
-              id="tag-select"
-              value={email.tag ?? ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                updateEmailTag(email.id, (val === '' ? null : val) as EmailTag);
-              }}
-              className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 bg-zinc-50 text-zinc-700 focus:outline-none focus:ring-2 focus:ring-violet-500 min-h-[36px]"
-              aria-label="Email tag"
-            >
-              <option value="">No tag</option>
-              {TAG_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {email.tag && <Badge value={email.tag} />}
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-3">
+            <Avatar name={email.from} className="w-11 h-11 text-sm" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-zinc-900 truncate">{email.from}</p>
+              <p className="text-xs text-zinc-500 truncate">{email.fromEmail}</p>
+              <p className="text-xs text-zinc-400 mt-0.5">{formatDate(email.receivedAt)}</p>
+            </div>
+
+            {/* One tag control: a colored pill that is also the dropdown */}
+            {/* On phones, start a new line so the pill sits under the sender */}
+            <div className="basis-full sm:hidden" aria-hidden="true" />
+            <div className="relative ml-14 sm:ml-0">
+              <select
+                id="tag-select"
+                value={email.tag ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  updateEmailTag(email.id, (val === '' ? null : val) as EmailTag);
+                }}
+                className={[
+                  'appearance-none rounded-full pl-3.5 pr-8 py-1.5 min-h-[36px] text-xs font-semibold cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500',
+                  email.tag ? tagClasses(email.tag) : 'bg-zinc-100 text-zinc-500',
+                ].join(' ')}
+                aria-label="Email tag"
+              >
+                <option value="">No tag</option>
+                {TAG_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <ChevronDownIcon
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-60"
+                aria-hidden="true"
+              />
+            </div>
           </div>
         </div>
 
         {/* Email body */}
         {!showReplyEditor && (
-          <div className="bg-white border border-zinc-200 rounded-xl p-4">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
             {email.bodyHtml ? (
               <EmailHtmlBody html={email.bodyHtml} />
             ) : (
-              <div className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">
+              <div className="text-[15px] text-zinc-700 whitespace-pre-wrap leading-7">
                 {email.bodyText || (
                   <span className="italic text-zinc-400">No readable content — cannot generate a reply from this email.</span>
                 )}
@@ -286,24 +307,20 @@ export function EmailDetailScreen() {
 
         {/* Reply editor (shown after Generate is tapped) */}
         {showReplyEditor && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-zinc-500">
-              <span>Replying to:</span>
-              <span className="font-medium text-zinc-700">{email.from}</span>
-              <span className="ml-auto text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-                Tone: {user?.tone}
-              </span>
-            </div>
-            <ReplyEditor
-              draft={draft}
-              isOnline={isOnline}
-              isSending={isSending}
-              onEdit={updateContent}
-              onRegenerate={() => regenerate(email.bodyText)}
-              onApprove={handleSend}
-              onDiscard={handleDiscard}
-            />
-          </div>
+          <ReplyEditor
+            draft={draft}
+            isOnline={isOnline}
+            isSending={isSending}
+            toName={email.from}
+            toEmail={email.fromEmail}
+            subject={email.subject}
+            tone={replyTone}
+            onToneChange={handleToneChange}
+            onEdit={updateContent}
+            onRegenerate={() => regenerate(email.bodyText, replyTone)}
+            onApprove={handleSend}
+            onDiscard={handleDiscard}
+          />
         )}
 
         {/* Actions (shown before reply editor) */}
@@ -336,22 +353,22 @@ export function EmailDetailScreen() {
                 No readable content — cannot generate a reply from this email.
               </div>
             )}
-            <button
-              onClick={handleIgnore}
-              className="w-full text-sm text-zinc-500 hover:text-zinc-700 py-3 font-medium min-h-[44px]"
-            >
-              Mark as Ignored
-            </button>
-
-            {/* Trash action */}
-            <div className="border-t border-zinc-100 pt-3">
+            {/* Secondary actions, side by side and quieter than the main button */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleIgnore}
+                className="flex items-center justify-center gap-2 text-sm text-zinc-600 hover:text-zinc-900 py-3 font-medium min-h-[44px] bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors"
+              >
+                <EyeSlashIcon className="w-4 h-4" />
+                Mark as Ignored
+              </button>
               <button
                 onClick={handleTrash}
                 disabled={isDeleting || !isOnline}
-                className="w-full flex items-center justify-center gap-2 text-sm text-zinc-500 hover:text-zinc-700 disabled:opacity-40 py-3 font-medium min-h-[44px] border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors"
+                className="flex items-center justify-center gap-2 text-sm text-zinc-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 disabled:opacity-40 py-3 font-medium min-h-[44px] bg-white border border-zinc-200 rounded-xl transition-colors"
               >
                 <TrashIcon className="w-4 h-4" />
-                {isDeleting ? 'Moving to Trash…' : 'Move to Trash'}
+                {isDeleting ? 'Moving…' : 'Move to Trash'}
               </button>
             </div>
           </div>

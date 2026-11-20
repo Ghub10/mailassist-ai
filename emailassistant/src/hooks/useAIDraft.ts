@@ -68,13 +68,15 @@ export function useAIDraft(emailId: string) {
     return content;
   }
 
-  const generate = useCallback(async (emailBody: string) => {
+  // `toneOverride` lets the reply screen try a different tone without
+  // changing the tone saved in Settings.
+  const generate = useCallback(async (emailBody: string, toneOverride?: Tone) => {
     if (!user) return;
 
     setDraft({ emailId, content: '', isLoading: true, error: null, confidence: null });
 
     try {
-      await runWithScoring(emailBody, user.tone, getSignerName());
+      await runWithScoring(emailBody, toneOverride ?? user.tone, getSignerName());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI service unavailable. Please try again.';
       setDraft({ emailId, content: '', isLoading: false, error: message, confidence: null });
@@ -82,13 +84,13 @@ export function useAIDraft(emailId: string) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, emailId, setDraft, getSignerName]);
 
-  const regenerate = useCallback(async (emailBody: string) => {
+  const regenerate = useCallback(async (emailBody: string, toneOverride?: Tone) => {
     if (!user) return;
 
     setDraft({ emailId, content: '', isLoading: true, error: null, confidence: null });
 
     try {
-      await runWithScoring(emailBody, user.tone, getSignerName());
+      await runWithScoring(emailBody, toneOverride ?? user.tone, getSignerName());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI service unavailable. Please try again.';
       setDraft({ emailId, content: '', isLoading: false, error: message, confidence: null });
