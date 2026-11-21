@@ -59,7 +59,7 @@ flowchart LR
 
 I'm listing these on purpose, in rough order of importance:
 
-1. **Lock down the database.** The setup script (`supabase-setup.sql`) switches Row Level Security off, and rows are keyed by email address, so the public key in the page could read and write any row. The next step is real authentication plus Row Level Security. The history table also keeps a short snippet of each email for the "similar question" feature, which I'd move on-device or encrypt.
+1. **Lock down the database.** The [setup script](emailassistant/supabase-setup.sql) switches Row Level Security off, and rows are keyed by email address, so the public key in the page could read and write any row. The next step is real authentication plus Row Level Security. The history table also keeps a short snippet of each email for the "similar question" feature, which I'd move on-device or encrypt.
 2. **Lock down `/api/openai`.** It passes the request body to OpenAI unchanged, with no sign-in check or rate limit, so someone could spend the credit on other prompts. It should allow only one model, cap the reply length, require a signed-in session and rate-limit by user.
 3. **Keep sign-in tokens out of the browser's storage.** They're stored in `localStorage`, which exposes them if a script ever runs on the page. Refresh tokens belong on the server in `httpOnly` cookies.
 4. **Add automated tests.** There are none yet. I'd start with unit tests for the prompt builder, email parsing and similar-reply matching, then an end-to-end test of the demo flow.
@@ -95,7 +95,7 @@ To connect a real inbox and get real AI replies, copy `.env.example` to `.env` a
 
 `npm run dev` doesn't run the `api/` functions. To try real AI replies on your computer, run `npx vercel dev` instead.
 
-**Deploying to Vercel:** set the project's **Root Directory** to `emailassistant`, add the variables above, and add your Vercel address to the Google and Microsoft redirect lists. If you use Supabase, run `emailassistant/supabase-setup.sql` once in its SQL editor.
+**Deploying to Vercel:** set the project's **Root Directory** to `emailassistant`, add the variables above, and add your Vercel address to the Google and Microsoft redirect lists. If you use Supabase, run [`emailassistant/supabase-setup.sql`](emailassistant/supabase-setup.sql) once in its SQL editor.
 
 ## Tech stack
 
