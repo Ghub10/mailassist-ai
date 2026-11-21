@@ -37,7 +37,7 @@ flowchart LR
 
 1. The user signs in. Google uses OAuth with PKCE, and Microsoft uses MSAL. The browser then talks to Gmail or Microsoft Graph directly, with that user's own access token.
 2. When the user presses **Generate AI Reply**, the app builds a prompt from the email, the chosen tone and the user's name (`src/utils/prompts.ts`). Long emails are trimmed to 3,000 characters first.
-3. The request goes to `/api/openai`, a small Vercel Edge Function. It adds the OpenAI key, which only exists on the server, and passes the model's streamed answer straight back.
+3. The request goes to `/api/openai`, a small Vercel Edge Function. It first checks that the caller really is signed in (it verifies the Google or Microsoft token the browser sends), that the request is small and for the one model it allows, and that the user isn't sending too many. Only then does it add the OpenAI key, which only exists on the server, and pass the model's streamed answer straight back.
 4. The browser shows the reply as it arrives. The user can edit it, switch tone to write a fresh draft, or regenerate.
 5. On **Approve & Send**, the reply goes out through Gmail or Outlook, and the email is marked as replied.
 
@@ -46,6 +46,7 @@ flowchart LR
 ## Why I built it this way
 
 - **Secrets stay on the server.** An early version kept the OpenAI key and Google client secret in `VITE_` settings, and anything with that prefix gets bundled into the page where anyone can read it. I moved both into Vercel Edge Functions (`api/openai.ts`, `api/auth/google-token.ts`). The browser never sees them.
+- **Only signed-in users can spend AI credit.** The AI endpoint costs real money, so it doesn't trust the browser. It verifies the user's token itself, accepts only one model and a short prompt, caps the reply length, and drops every other option a caller might send.
 - **PKCE for Google sign-in.** The app runs in a browser, so it can't hold a secret. PKCE proves the sign-in came from the same session without one. The client secret that Google still requires lives only in the server function.
 - **A small, cheap model.** Email replies are short, so I used `gpt-4o-mini`: fast, inexpensive, and good enough for a few paragraphs. Streaming makes the wait feel short.
 - **Human approval, always.** The app drafts but never sends on its own. The permission note on the login screen says so, and the code backs it up: sending and deleting only happen from a button the user presses.
@@ -60,7 +61,7 @@ flowchart LR
 I'm listing these on purpose, in rough order of importance:
 
 1. **Lock down the database.** The setup script (`supabase-setup.sql`) switches Row Level Security off, and rows are keyed by email address, so the public key in the page could read and write any row. The next step is real authentication plus Row Level Security. The history table also keeps a short snippet of each email for the "similar question" feature, which I'd move on-device or encrypt.
-2. **Lock down `/api/openai`.** It passes the request body to OpenAI unchanged, with no sign-in check or rate limit, so someone could spend the credit on other prompts. It should allow only one model, cap the reply length, require a signed-in session and rate-limit by user.
+2. **Make the AI rate limit exact.** `/api/openai` only answers signed-in users, allows one model, caps prompt and reply size, and limits each user to 20 requests per 10 minutes. That limit is counted in each server's memory, so it's a speed bump, not a wall. A shared store such as Upstash or Vercel KV would make it exact. Also, Microsoft tokens can only be confirmed as real, not as issued to this app, whereas Google tokens are checked against this app's client ID.
 3. **Keep sign-in tokens out of the browser's storage.** They're stored in `localStorage`, which exposes them if a script ever runs on the page. Refresh tokens belong on the server in `httpOnly` cookies.
 4. **Add automated tests.** There are none yet. I'd start with unit tests for the prompt builder, email parsing and similar-reply matching, then an end-to-end test of the demo flow.
 5. **Switch the paused features back on**, draft quality scoring and urgency sorting, once there's a billing plan to cover the extra calls.
@@ -86,7 +87,7 @@ To connect a real inbox and get real AI replies, copy `.env.example` to `.env` a
 
 | Variable | Where it's used | Visible in the browser? |
 |---|---|---|
-| `VITE_GOOGLE_CLIENT_ID` | Google sign-in | Yes, it's public by design |
+| `VITE_GOOGLE_CLIENT_ID` | Google sign-in, and `api/openai` uses it to check that a token was issued to this app | Yes, it's public by design |
 | `VITE_MICROSOFT_CLIENT_ID` | Microsoft sign-in | Yes, it's public by design |
 | `VITE_APP_URL` | OAuth redirect address | Yes |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Syncing tags, statuses and history | Yes (optional, the app runs without them) |

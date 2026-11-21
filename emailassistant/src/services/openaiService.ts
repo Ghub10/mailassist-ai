@@ -12,10 +12,23 @@ const MSG_BUSY = 'The assistant is busy, please try again in a minute.';
 const MSG_UNAVAILABLE = "The assistant isn't available right now. Please try again later.";
 const MSG_EMPTY = "The assistant didn't come back with a reply. Please try again.";
 const MSG_OFFLINE = "Couldn't reach the assistant. Please check your connection and try again.";
+const MSG_SIGN_IN = "Your session has expired. Please sign out and sign in again.";
+
+// The server only answers signed-in users, so every AI request carries the
+// user's Google or Microsoft access token for the server to check.
+export interface AIAuth {
+  provider: 'google' | 'microsoft';
+  accessToken: string;
+}
+
+function authHeaders(auth?: AIAuth): Record<string, string> {
+  return auth ? { Authorization: `Bearer ${auth.accessToken}`, 'X-Auth-Provider': auth.provider } : {};
+}
 
 // On a genuine 429 rate-limit response, waits 15 s then tries once more.
-// A 429 caused by insufficient_quota (no credits / no billing) is NOT retried,
-// since waiting can never resolve it. onRetry is called right before a retry so
+// A 429 caused by insufficient_quota (no credits / no billing) or by our own
+// per-user limit (rate_limited, a 10-minute window) is NOT retried, since
+// waiting 15 s can never resolve it. onRetry is called right before a retry so
 // the UI can show a waiting message.
 async function fetchWithRetry(
   url: string,
@@ -27,7 +40,7 @@ async function fetchWithRetry(
 
   // Peek at the error code without consuming the original response body.
   const err = await first.clone().json().catch(() => ({}));
-  if (err?.error?.code === 'insufficient_quota') return first;
+  if (err?.error?.code === 'insufficient_quota' || err?.error?.code === 'rate_limited') return first;
 
   onRetry?.();
   await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
@@ -38,7 +51,8 @@ export async function generateDraft(
   emailBody: string,
   tone: Tone,
   signerName: string,
-  onChunk?: (accumulated: string) => void
+  onChunk?: (accumulated: string) => void,
+  auth?: AIAuth
 ): Promise<string> {
   const truncatedBody = truncateForAI(emailBody, 3000);
   const prompt = buildReplyPrompt(truncatedBody, tone, signerName);
@@ -47,6 +61,7 @@ export async function generateDraft(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders(auth),
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
@@ -72,6 +87,8 @@ export async function generateDraft(
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     console.error('[assistant] OpenAI request failed', response.status, err);
+    // Not signed in, or the sign-in has run out: ask them to sign in again.
+    if (response.status === 401) throw new Error(MSG_SIGN_IN);
     // No credits, or too many requests: both read as "busy" to a visitor.
     if (err.error?.code === 'insufficient_quota' || response.status === 429) {
       throw new Error(MSG_BUSY);
@@ -125,7 +142,8 @@ export async function generateDraft(
 }
 
 export async function classifyUrgency(
-  emails: Email[]
+  emails: Email[],
+  auth?: AIAuth
 ): Promise<Record<string, 1 | 2 | 3>> {
   if (emails.length === 0) return {};
 
@@ -151,6 +169,7 @@ ${JSON.stringify(items)}`;
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders(auth),
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -182,7 +201,8 @@ ${JSON.stringify(items)}`;
 
 export async function scoreDraft(
   emailBody: string,
-  draftText: string
+  draftText: string,
+  auth?: AIAuth
 ): Promise<{ score: number; feedback: string }> {
   const prompt = `You are evaluating an AI-generated email reply. Rate 1–10 how completely and accurately this draft addresses the sender's question or request. A 10 means the reply is complete, accurate, and on-topic. A 1 means it misses the point entirely.
 
@@ -205,6 +225,7 @@ ${draftText.slice(0, 1000)}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders(auth),
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',

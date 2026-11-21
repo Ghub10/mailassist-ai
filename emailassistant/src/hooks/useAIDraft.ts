@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useInbox } from '../context/InboxContext';
-import { generateDraft } from '../services/openaiService';
-import { loadDisplayName, loadReplyHistory, type ReplyHistoryEntry } from '../utils/tokenStorage';
+import { generateDraft, type AIAuth } from '../services/openaiService';
+import { refreshGoogleToken } from '../services/authService';
+import { refreshMicrosoftToken } from '../services/msalService';
+import { isTokenExpired, loadDisplayName, loadReplyHistory, type ReplyHistoryEntry } from '../utils/tokenStorage';
 import type { Tone } from '../types/user';
 import { getSampleReply, streamSampleReply } from '../data/sampleMode';
 
@@ -25,7 +27,7 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 }
 
 export function useAIDraft(emailId: string) {
-  const { user } = useAuth();
+  const { user, updateToken } = useAuth();
   const { draft, setDraft, clearDraft } = useInbox();
 
   const getSignerName = useCallback((): string => {
@@ -43,15 +45,46 @@ export function useAIDraft(emailId: string) {
     return null;
   }, []);
 
+  // The server only answers signed-in users, so each draft request carries the
+  // user's access token. If it has run out since the inbox loaded, renew it first.
+  async function getAuth(): Promise<AIAuth> {
+    if (!user) throw new Error('Please sign in again.');
+    try {
+      let accessToken = user.accessToken;
+      if (isTokenExpired(user)) {
+        if (user.provider === 'google') {
+          if (!user.refreshToken) throw new Error('No refresh token');
+          const refreshed = await refreshGoogleToken(user.refreshToken);
+          accessToken = refreshed.accessToken;
+          updateToken(refreshed.accessToken, refreshed.tokenExpiry);
+        } else {
+          const refreshed = await refreshMicrosoftToken(user);
+          accessToken = refreshed.accessToken;
+          updateToken(refreshed.accessToken, refreshed.tokenExpiry);
+        }
+      }
+      return { provider: user.provider, accessToken };
+    } catch (err) {
+      console.error('[assistant] could not renew the sign-in', err);
+      throw new Error('Your session has expired. Please sign out and sign in again.');
+    }
+  }
+
   async function runWithScoring(emailBody: string, tone: Tone, signerName: string) {
     // Sample mode: a pre-written reply typed out like the real AI, with no API call.
     const content = user?.isDemo
       ? await streamSampleReply(getSampleReply(emailId, tone, signerName), (accumulated) => {
           setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
         })
-      : await generateDraft(emailBody, tone, signerName, (accumulated) => {
-          setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
-        });
+      : await generateDraft(
+          emailBody,
+          tone,
+          signerName,
+          (accumulated) => {
+            setDraft({ emailId, content: accumulated, isLoading: true, error: null, confidence: null });
+          },
+          await getAuth()
+        );
     // Draft scoring temporarily disabled to preserve API quota on free-tier
     // OpenAI accounts (scoring adds a second API call per generate).
     // Re-enable once billing is set up by restoring the scoreDraft call below.
