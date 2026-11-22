@@ -2,7 +2,7 @@
 
 An email assistant that reads your inbox and drafts the replies. You pick an email, choose a tone, watch the draft appear, edit it if you like, and approve it. Nothing is sent until you press the button.
 
-**Live demo: [mailassist-ai.vercel.app](https://mailassist-ai.vercel.app)**. Click **"Try a demo, no sign-in"** to explore a sample inbox without connecting an account.
+**Live demo: [mailassist-ai.vercel.app](https://mailassist-ai.vercel.app)**. Click **"Try a demo, no sign-in"** to explore a sample inbox without connecting an account. Signing in with Google is limited to a short list of approved testers while the app is in Google's testing mode, so the demo is the way in for everyone else.
 
 ![The reply screen: an email from Priya Shah and a friendly AI-written reply, with tone buttons and an Approve & Send button](emailassistant/public/screenshot-reply.png)
 
@@ -67,7 +67,7 @@ I'm listing these on purpose, in rough order of importance:
 5. **Switch the paused features back on**, draft quality scoring and urgency sorting, once there's a billing plan to cover the extra calls.
 6. **Load more mail.** Gmail loads the 15 most recent inbox emails and Outlook loads 50, with no paging or search.
 7. **Give the AI more context.** Use the whole email thread, and learn the user's writing style from the replies they've approved.
-8. **Prepare for a public launch.** Gmail's permissions are classed as restricted, so a public launch needs Google's app verification, plus a privacy policy and terms page.
+8. **Prepare for a public launch.** Gmail's permissions are classed as restricted, so a public launch needs Google's app verification, plus a privacy policy and terms page. Until then the app stays in Google's testing mode: only approved testers can sign in, and their sign-in passes expire after about a week.
 9. **Trim the bundle.** The main JavaScript file is over 800 kB. Splitting it by screen would speed up the first load.
 
 ## Run it yourself
