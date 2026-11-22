@@ -112,29 +112,50 @@ export async function generateDraft(
   const decoder = new TextDecoder();
   let accumulated = '';
 
-  while (true) {
+  // The network hands us the stream in arbitrary pieces, and a piece can end in
+  // the middle of a line. Keep the unfinished tail and finish it with the next
+  // piece. (Throwing it away drops words from the reply.)
+  let pending = '';
+
+  // Reads one line of the stream. Returns true once the stream says it is done.
+  const handleLine = (rawLine: string): boolean => {
+    const line = rawLine.trim();
+    if (!line.startsWith('data:')) return false;
+    const data = line.slice(5).trim();
+    if (data === '[DONE]') return true;
+    try {
+      const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+      if (delta) {
+        accumulated += delta;
+        onChunk(accumulated);
+      }
+    } catch {
+      console.error('[assistant] could not read a streamed line', data.slice(0, 80));
+    }
+    return false;
+  };
+
+  let finished = false;
+  while (!finished) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
+    pending += decoder.decode(value, { stream: true });
+    const lines = pending.split('\n');
+    pending = lines.pop() ?? ''; // the last piece may be unfinished: keep it
 
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim();
-      if (data === '[DONE]') break;
-
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          accumulated += delta;
-          onChunk(accumulated);
-        }
-      } catch {
-        // Incomplete JSON fragment — skip
+      if (handleLine(line)) {
+        finished = true;
+        break;
       }
     }
+  }
+
+  // The stream can end without a final newline; don't lose the last line.
+  if (!finished) {
+    pending += decoder.decode();
+    if (pending) handleLine(pending);
   }
 
   if (!accumulated) throw new Error(MSG_EMPTY);
